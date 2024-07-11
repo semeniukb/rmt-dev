@@ -1,12 +1,21 @@
 import JobListItem from "./JobListItem.tsx";
+import { JobItem } from "../utils/types";
+import Spinner from "./Spinner.tsx";
 
-export function JobList() {
+type JobListProps = {
+  jobItems: JobItem[];
+  isLoading: boolean;
+};
+
+export function JobList({ jobItems, isLoading }: JobListProps) {
   return (
     <ul className="job-list">
-      <JobListItem />
-      <JobListItem />
-      <JobListItem />
-      <JobListItem />
+      {isLoading && <Spinner />}
+
+      {!isLoading &&
+        jobItems.map((jobItem: JobItem) => (
+          <JobListItem key={jobItem.id} {...jobItem} />
+        ))}
     </ul>
   );
 }

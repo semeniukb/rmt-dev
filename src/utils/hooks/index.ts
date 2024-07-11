@@ -1,19 +1,44 @@
 import { useEffect, useState } from "react";
-import { getJobItems } from "../api/requests";
-import { GetJobItemsResponse, type JobItem } from "../types";
+import { getJobItem, getJobItems } from "../api/requests";
+import type {
+  GetJobDetailsResponse,
+  GetJobItemsResponse,
+  JobDetails,
+  JobItem,
+} from "../types";
 
-type JobItemsProps = {
-  searchText: string;
+export const useActiveId = () => {
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const id = Number(window.location.hash.slice(1));
+      setActiveId(id);
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
+
+  return activeId;
 };
-export const useJobItems = ({ searchText }: JobItemsProps) => {
+
+export const useJobItems = (searchText: string) => {
   const [jobItems, setJobItems] = useState<JobItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const jobItemsSliced = jobItems.slice(0, 7);
 
   useEffect(() => {
     if (!searchText) return;
 
     (async function fetchJobItems() {
       try {
+        setIsLoading(true);
+
         const response = await getJobItems(searchText);
         const data: GetJobItemsResponse = response.data;
 
@@ -26,5 +51,31 @@ export const useJobItems = ({ searchText }: JobItemsProps) => {
     })();
   }, [searchText]);
 
-  return { jobItems, isLoading };
+  return [jobItemsSliced, isLoading] as const;
+};
+
+export const useJobItem = (activeId: number | null) => {
+  const [jobItem, setJobItem] = useState<JobDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!activeId) return;
+
+    (async function fetchJobItem() {
+      try {
+        setIsLoading(true);
+
+        const response = await getJobItem(activeId);
+        const data: GetJobDetailsResponse = response.data;
+
+        setJobItem(data.jobItem);
+      } catch (error) {
+        console.error("Error fetching job item:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [activeId]);
+
+  return [jobItem, isLoading] as const;
 };
