@@ -13,24 +13,18 @@ export type GetJobItemsResponse = {
   sorted: boolean;
 };
 
-export type JobDetails = {
-  badgeLetters: string;
-  company: string;
+export type JobItemExpanded = JobItem & {
   companyURL: string;
   coverImgURL: string;
-  daysAgo: number;
   description: string;
   duration: string;
-  id: number;
   location: string;
   qualifications: string[];
-  relevanceScore: number;
   reviews: string[];
   salary: string;
-  title: string;
 };
 
 export type GetJobDetailsResponse = {
-  jobItem: JobDetails;
+  jobItem: JobItemExpanded;
   public: boolean;
 };

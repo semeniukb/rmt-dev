@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { getJobItem, getJobItems } from "../api/requests";
-import type {
-  GetJobDetailsResponse,
-  GetJobItemsResponse,
-  JobDetails,
-  JobItem,
-} from "../types";
+import { useQuery } from "@tanstack/react-query";
+import { handleError } from "../utils.ts";
 
 export const useActiveId = () => {
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -27,55 +23,61 @@ export const useActiveId = () => {
 };
 
 export const useJobItems = (searchText: string) => {
-  const [jobItems, setJobItems] = useState<JobItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, isInitialLoading } = useQuery({
+    queryKey: ["job-items", searchText],
+    queryFn: async () => {
+      const response = await getJobItems(searchText);
 
-  const jobItemsSliced = jobItems.slice(0, 7);
-
-  useEffect(() => {
-    if (!searchText) return;
-
-    (async function fetchJobItems() {
-      try {
-        setIsLoading(true);
-
-        const response = await getJobItems(searchText);
-        const data: GetJobItemsResponse = response.data;
-
-        setJobItems(data.jobItems);
-      } catch (error) {
-        console.error("Error fetching job items:", error);
-      } finally {
-        setIsLoading(false);
+      if (response.status !== 200) {
+        throw new Error(response.statusText);
       }
-    })();
-  }, [searchText]);
 
-  return [jobItemsSliced, isLoading] as const;
+      return response.data.jobItems;
+    },
+    onError: handleError,
+    staleTime: 1000 * 60 * 60,
+    enabled: !!searchText,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  return { jobItems: data, isLoading: isInitialLoading } as const;
 };
 
 export const useJobItem = (activeId: number | null) => {
-  const [jobItem, setJobItem] = useState<JobDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, isInitialLoading } = useQuery({
+    queryKey: ["job-item", activeId],
+    queryFn: async () => {
+      if (!activeId) return;
+      const response = await getJobItem(activeId);
 
-  useEffect(() => {
-    if (!activeId) return;
-
-    (async function fetchJobItem() {
-      try {
-        setIsLoading(true);
-
-        const response = await getJobItem(activeId);
-        const data: GetJobDetailsResponse = response.data;
-
-        setJobItem(data.jobItem);
-      } catch (error) {
-        console.error("Error fetching job item:", error);
-      } finally {
-        setIsLoading(false);
+      if (response.status !== 200) {
+        throw new Error(response.statusText);
       }
-    })();
-  }, [activeId]);
+      return response.data;
+    },
+    onError: handleError,
+    enabled: !!activeId,
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+
+  const jobItem = data?.jobItem;
+  const isLoading = isInitialLoading;
 
   return [jobItem, isLoading] as const;
 };
+
+export function useDebounce<T>(value: T, delay = 500): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
